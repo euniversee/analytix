@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Analytix — Search</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #edecea; --card: #f5f4f1; --border: #dedad5; --divider: #d5d0cb;
+      --text-primary: #1a1816; --text-secondary: #6b6560; --text-muted: #a09a94;
+      --accent: #2d2a26; --chip-bg: #e4e0db; --chip-text: #5a5550;
+      --success-bg: #e8f0eb; --success-text: #2e5c3e;
+      --error-bg: #f0e8e8; --error-text: #7a2e2e;
+      --sidebar-w: 220px; --radius: 18px; --gap: 10px;
+    }
+    html, body { height: 100%; background: var(--bg); color: var(--text-primary); }
+    body { font-family: 'Inter', sans-serif; font-size: 14px; display: flex; min-height: 100vh; }
+
+    .sidebar { width: var(--sidebar-w); min-height: 100vh; background: var(--card); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 28px 0; position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; }
+    .sidebar-logo { padding: 0 22px 24px; border-bottom: 1px solid var(--divider); margin-bottom: 20px; }
+    .sidebar-logo span { font-family: 'Instrument Serif', serif; font-size: 22px; color: var(--text-primary); letter-spacing: -0.3px; }
+    .sidebar-logo small { display: block; font-size: 10px; color: var(--text-muted); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 2px; }
+    .nav-section { padding: 0 12px; margin-bottom: 6px; }
+    .nav-label { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); padding: 0 10px; margin-bottom: 6px; margin-top: 14px; }
+    .nav-link { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; color: var(--text-secondary); text-decoration: none; font-size: 13px; font-weight: 500; transition: all 0.15s; }
+    .nav-link:hover { background: var(--chip-bg); color: var(--text-primary); }
+    .nav-link.active { background: var(--text-primary); color: var(--card); }
+    .nav-link svg { width: 15px; height: 15px; flex-shrink: 0; }
+    .sidebar-footer { margin-top: auto; padding: 16px 22px 0; border-top: 1px solid var(--divider); }
+    .user-row { display: flex; align-items: center; gap: 10px; }
+    .user-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--chip-bg); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+    .user-name { font-size: 13px; font-weight: 500; }
+    .user-role { font-size: 11px; color: var(--text-muted); }
+
+    .main { margin-left: var(--sidebar-w); flex: 1; padding: 28px 28px 40px; }
+    .page-header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 22px; }
+    .page-title { font-family: 'Instrument Serif', serif; font-size: 30px; letter-spacing: -0.5px; line-height: 1; }
+    .page-subtitle { font-size: 13px; color: var(--text-muted); margin-top: 5px; }
+
+    .chip { display: inline-flex; align-items: center; gap: 5px; background: var(--chip-bg); color: var(--chip-text); font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 100px; }
+
+    .bento { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--gap); }
+    .span-2 { grid-column: span 2; }
+    .span-3 { grid-column: span 3; }
+
+    .card { background: var(--card); border-radius: var(--radius); padding: 22px; border: 1px solid var(--border); }
+    .card-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .card-label::after { content: ''; flex: 1; height: 1px; background: var(--divider); }
+
+    /* Search bar */
+    .search-wrap { position: relative; }
+    .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
+    .search-input {
+      width: 100%; padding: 13px 14px 13px 42px;
+      border: 1px solid var(--border); border-radius: 13px;
+      background: var(--bg); font-family: 'Inter', sans-serif;
+      font-size: 15px; color: var(--text-primary); outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .search-input::placeholder { color: var(--text-muted); }
+    .search-input:focus { border-color: var(--text-primary); box-shadow: 0 0 0 3px rgba(26,24,22,0.06); }
+
+    .filter-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .filter-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: var(--chip-bg); color: var(--chip-text);
+      font-size: 11px; font-weight: 500; padding: 5px 12px;
+      border-radius: 100px; cursor: pointer; border: none;
+      font-family: 'Inter', sans-serif; transition: all 0.15s;
+    }
+    .filter-chip:hover, .filter-chip.active { background: var(--text-primary); color: var(--card); }
+
+    /* Table */
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); padding: 0 0 12px; font-weight: 500; border-bottom: 1px solid var(--divider); }
+    td { padding: 12px 0; border-bottom: 1px solid var(--divider); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+
+    .customer-cell { display: flex; align-items: center; gap: 10px; }
+    .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--chip-bg); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: var(--text-secondary); flex-shrink: 0; }
+    .customer-name { font-size: 13px; font-weight: 500; }
+    .customer-sub { font-size: 11px; color: var(--text-muted); }
+    .amount { font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }
+    .date-cell { font-size: 12px; color: var(--text-secondary); }
+
+    .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+    .empty-state svg { margin: 0 auto 12px; display: block; opacity: 0.4; }
+    .empty-state p { font-size: 13px; }
+
+    .result-count { font-size: 12px; color: var(--text-muted); }
+
+    /* Summary stats */
+    .mini-stat { padding: 14px 0; border-bottom: 1px solid var(--divider); display: flex; justify-content: space-between; align-items: center; }
+    .mini-stat:last-child { border-bottom: none; }
+    .mini-stat-label { font-size: 12px; color: var(--text-secondary); }
+    .mini-stat-value { font-size: 14px; font-weight: 600; }
+
+    .action-btn {
+      width: 26px; height: 26px; border-radius: 8px;
+      background: var(--chip-bg); border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-secondary); transition: all 0.15s;
+    }
+    .action-btn:hover { background: var(--error-bg); color: var(--error-text); }
+
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    .card { animation: fadeUp 0.4s ease both; }
+    .bento .card:nth-child(1) { animation-delay: 0.05s; }
+    .bento .card:nth-child(2) { animation-delay: 0.1s; }
+    .bento .card:nth-child(3) { animation-delay: 0.15s; }
+    .bento .card:nth-child(4) { animation-delay: 0.2s; }
+  </style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <span>Analytix</span>
+    <small>Sales Intelligence</small>
+  </div>
+  <nav class="nav-section">
+    <div class="nav-label">Overview</div>
+    <a href="/" class="nav-link">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      Dashboard
+    </a>
+    <a href="/charts" class="nav-link">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Analytics
+    </a>
+  </nav>
+  <nav class="nav-section">
+    <div class="nav-label">Manage</div>
+    <a href="/forms" class="nav-link">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      Add Entry
+    </a>
+    <a href="/search" class="nav-link active">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      Search
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-row">
+      <div class="user-avatar">A</div>
+      <div><div class="user-name">Admin</div><div class="user-role">Super user</div></div>
+    </div>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Search</h1>
+      <p class="page-subtitle">Find transactions by customer name</p>
+    </div>
+  </div>
+
+  <div class="bento">
+
+    <!-- Search bar (span 3) -->
+    <div class="card span-3" style="padding: 18px 22px;">
+      <div class="search-wrap" style="margin-bottom:14px;">
+        <div class="search-icon">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+        <input class="search-input" type="text" id="searchInput" placeholder="Search by customer name…" oninput="runSearch()" />
+      </div>
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+        <div class="filter-row">
+          <button class="filter-chip active" onclick="setFilter('all', this)">All</button>
+          <button class="filter-chip" onclick="setFilter('success', this)">Success</button>
+          <button class="filter-chip" onclick="setFilter('failed', this)">Failed</button>
+        </div>
+        <span class="result-count" id="resultCount">Loading…</span>
+      </div>
+    </div>
+
+    <!-- Results Table (span 2) -->
+    <div class="card span-2">
+      <div class="card-label">Results</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Customer</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Date</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="resultsBody">
+          <!-- Rows injected by JS -->
+        </tbody>
+      </table>
+      <div id="emptyState" class="empty-state" style="display:none;">
+        <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <p>No results found for your search.</p>
+      </div>
+    </div>
+
+    <!-- Summary sidebar -->
+    <div class="card">
+      <div class="card-label">Search Summary</div>
+      <div class="mini-stat">
+        <span class="mini-stat-label">Visible results</span>
+        <span class="mini-stat-value" id="summaryCount">0</span>
+      </div>
+      <div class="mini-stat">
+        <span class="mini-stat-label">Total amount</span>
+        <span class="mini-stat-value" id="summaryAmount">Rp 0</span>
+      </div>
+      <div class="mini-stat">
+        <span class="mini-stat-label">Successful</span>
+        <span class="mini-stat-value" style="color:var(--success-text);" id="summarySuccess">0</span>
+      </div>
+      <div class="mini-stat">
+        <span class="mini-stat-label">Failed</span>
+        <span class="mini-stat-value" style="color:var(--error-text);" id="summaryFailed">0</span>
+      </div>
+
+      <div style="height:1px; background:var(--divider); margin:16px 0;"></div>
+      <div style="font-size:11px; color:var(--text-muted); line-height:1.6;">
+        Type in the search box to find customers. Use filter chips to narrow results by status. Data is fetched live from the database.
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+  let ALL_DATA = [];
+  let currentFilter = 'all';
+  let currentQuery = '';
+
+  // Load all data from the search API
+  function loadData(query) {
+    const url = query ? `/search?q=${encodeURIComponent(query)}` : '/search?q=';
+    return fetch(url)
+      .then(r => r.text())
+      .then(html => {
+        // We'll use a different approach: fetch from a JSON API
+      });
+  }
+
+  // Actually, let's use the Jinja-rendered data passed from Flask
+  {% if results is defined %}
+  ALL_DATA = [
+    {% for row in results %}
+    {
+      id: {{ row[0] }},
+      name: "{{ row[1] }}",
+      amount: {{ row[2] }},
+      status: "{{ row[3] }}",
+      date: "{{ row[4] }}",
+      note: "{{ row[5] if row[5] else '' }}"
+    },
+    {% endfor %}
+  ];
+  {% endif %}
+
+  function initials(name) {
+    return name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+  }
+
+  function formatRp(n) {
+    return 'Rp ' + n.toLocaleString('id-ID');
+  }
+
+  function setFilter(f, btn) {
+    currentFilter = f;
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    render();
+  }
+
+  function runSearch() {
+    currentQuery = document.getElementById('searchInput').value.toLowerCase();
+    render();
+  }
+
+  function deleteEntry(id) {
+    if (!confirm('Delete this entry?')) return;
+    fetch('/api/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customer: id })
+    })
+    .then(r => r.json())
+    .then(() => location.reload());
+  }
+
+  function render() {
+    const filtered = ALL_DATA.filter(d => {
+      const matchQ = !currentQuery || d.name.toLowerCase().includes(currentQuery) || d.status.toLowerCase().includes(currentQuery) || String(d.amount).includes(currentQuery);
+      let matchF = true;
+      if (currentFilter === 'success') matchF = d.status.toLowerCase() === 'success';
+      if (currentFilter === 'failed') matchF = d.status.toLowerCase() === 'failed';
+      return matchQ && matchF;
+    });
+
+    const tbody = document.getElementById('resultsBody');
+    tbody.innerHTML = '';
+    filtered.forEach(d => {
+      const statusChip = d.status.toLowerCase() !== 'failed'
+        ? `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--success-bg);color:var(--success-text);font-size:11px;font-weight:500;padding:3px 9px;border-radius:100px;"><span style="width:4px;height:4px;border-radius:50%;background:currentColor;"></span>Success</span>`
+        : `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--error-bg);color:var(--error-text);font-size:11px;font-weight:500;padding:3px 9px;border-radius:100px;"><span style="width:4px;height:4px;border-radius:50%;background:currentColor;"></span>Failed</span>`;
+      tbody.innerHTML += `<tr>
+        <td style="padding:12px 0;border-bottom:1px solid var(--divider);">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--chip-bg);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--text-secondary);flex-shrink:0;">${initials(d.name)}</div>
+            <div><div style="font-size:13px;font-weight:500;">${d.name}</div><div style="font-size:11px;color:var(--text-muted);">Customer</div></div>
+          </div>
+        </td>
+        <td style="padding:12px 0;border-bottom:1px solid var(--divider);font-size:13px;font-weight:500;">${formatRp(d.amount)}</td>
+        <td style="padding:12px 0;border-bottom:1px solid var(--divider);">${statusChip}</td>
+        <td style="padding:12px 0;border-bottom:1px solid var(--divider);font-size:12px;color:var(--text-secondary);">${d.date}</td>
+        <td style="padding:12px 0;border-bottom:1px solid var(--divider);">
+          <button class="action-btn" title="Delete" onclick="deleteEntry(${d.id})">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </td>
+      </tr>`;
+    });
+
+    const empty = document.getElementById('emptyState');
+    empty.style.display = filtered.length === 0 ? 'block' : 'none';
+
+    const totalAmt = filtered.reduce((a, b) => a + b.amount, 0);
+    const succCount = filtered.filter(d => d.status.toLowerCase() !== 'failed').length;
+    const failCount = filtered.filter(d => d.status.toLowerCase() === 'failed').length;
+
+    document.getElementById('resultCount').textContent = `Showing ${filtered.length} of ${ALL_DATA.length} results`;
+    document.getElementById('summaryCount').textContent = filtered.length;
+    document.getElementById('summaryAmount').textContent = formatRp(totalAmt);
+    document.getElementById('summarySuccess').textContent = succCount;
+    document.getElementById('summaryFailed').textContent = failCount;
+  }
+
+  render();
+</script>
+</body>
+</html>

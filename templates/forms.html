@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Analytix — Add Entry</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #edecea;
+      --card: #f5f4f1;
+      --border: #dedad5;
+      --divider: #d5d0cb;
+      --text-primary: #1a1816;
+      --text-secondary: #6b6560;
+      --text-muted: #a09a94;
+      --accent: #2d2a26;
+      --chip-bg: #e4e0db;
+      --chip-text: #5a5550;
+      --success-bg: #e8f0eb;
+      --success-text: #2e5c3e;
+      --error-bg: #f0e8e8;
+      --error-text: #7a2e2e;
+      --sidebar-w: 220px;
+      --radius: 18px;
+      --gap: 10px;
+    }
+
+    html, body { height: 100%; background: var(--bg); color: var(--text-primary); }
+    body { font-family: 'Inter', sans-serif; font-size: 14px; display: flex; min-height: 100vh; }
+
+    .sidebar {
+      width: var(--sidebar-w); min-height: 100vh; background: var(--card);
+      border-right: 1px solid var(--border); display: flex; flex-direction: column;
+      padding: 28px 0; position: fixed; top: 0; left: 0; bottom: 0; z-index: 100;
+    }
+    .sidebar-logo { padding: 0 22px 24px; border-bottom: 1px solid var(--divider); margin-bottom: 20px; }
+    .sidebar-logo span { font-family: 'Instrument Serif', serif; font-size: 22px; color: var(--text-primary); letter-spacing: -0.3px; }
+    .sidebar-logo small { display: block; font-size: 10px; color: var(--text-muted); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 2px; }
+    .nav-section { padding: 0 12px; margin-bottom: 6px; }
+    .nav-label { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); padding: 0 10px; margin-bottom: 6px; margin-top: 14px; }
+    .nav-link { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; color: var(--text-secondary); text-decoration: none; font-size: 13px; font-weight: 500; transition: all 0.15s; }
+    .nav-link:hover { background: var(--chip-bg); color: var(--text-primary); }
+    .nav-link.active { background: var(--text-primary); color: var(--card); }
+    .nav-link svg { width: 15px; height: 15px; flex-shrink: 0; }
+    .sidebar-footer { margin-top: auto; padding: 16px 22px 0; border-top: 1px solid var(--divider); }
+    .user-row { display: flex; align-items: center; gap: 10px; }
+    .user-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--chip-bg); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; color: var(--text-secondary); flex-shrink: 0; }
+    .user-name { font-size: 13px; font-weight: 500; }
+    .user-role { font-size: 11px; color: var(--text-muted); }
+
+    .main { margin-left: var(--sidebar-w); flex: 1; min-height: 100vh; padding: 28px 28px 40px; }
+    .page-header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 22px; }
+    .page-title { font-family: 'Instrument Serif', serif; font-size: 30px; letter-spacing: -0.5px; line-height: 1; }
+    .page-subtitle { font-size: 13px; color: var(--text-muted); margin-top: 5px; }
+
+    .chip { display: inline-flex; align-items: center; gap: 5px; background: var(--chip-bg); color: var(--chip-text); font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 100px; }
+    .chip-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+    .bento { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--gap); }
+    .span-2 { grid-column: span 2; }
+    .span-3 { grid-column: span 3; }
+
+    .card { background: var(--card); border-radius: var(--radius); padding: 22px; border: 1px solid var(--border); }
+    .card-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .card-label::after { content: ''; flex: 1; height: 1px; background: var(--divider); }
+
+    .divider { height: 1px; background: var(--divider); margin: 16px 0; }
+
+    /* Form Styles */
+    .form-group { margin-bottom: 18px; }
+    .form-label { display: block; font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 7px; letter-spacing: 0.01em; }
+    .form-input {
+      width: 100%; padding: 10px 14px; border-radius: 11px;
+      border: 1px solid var(--border); background: var(--bg);
+      font-family: 'Inter', sans-serif; font-size: 13px;
+      color: var(--text-primary); transition: border-color 0.15s, box-shadow 0.15s;
+      outline: none;
+    }
+    .form-input::placeholder { color: var(--text-muted); }
+    .form-input:focus { border-color: var(--text-primary); box-shadow: 0 0 0 3px rgba(26,24,22,0.06); }
+    textarea.form-input { resize: vertical; min-height: 90px; }
+    select.form-input { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23a09a94' stroke-width='2' viewBox='0 0 24 24'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; border-radius: 11px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; font-family: 'Inter', sans-serif; transition: all 0.15s; text-decoration: none; }
+    .btn-primary { background: var(--text-primary); color: var(--card); }
+    .btn-primary:hover { opacity: 0.88; }
+    .btn-ghost { background: var(--chip-bg); color: var(--text-secondary); }
+    .btn-ghost:hover { background: var(--divider); color: var(--text-primary); }
+
+    /* Tips card */
+    .tip-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--divider); }
+    .tip-item:last-child { border-bottom: none; }
+    .tip-icon { width: 26px; height: 26px; border-radius: 8px; background: var(--chip-bg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .tip-text { font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
+    .tip-title { font-size: 12px; font-weight: 500; color: var(--text-primary); margin-bottom: 2px; }
+
+    /* Stats strip */
+    .stats-strip { display: flex; gap: 0; }
+    .strip-stat { flex: 1; padding: 16px; border-right: 1px solid var(--divider); }
+    .strip-stat:last-child { border-right: none; }
+    .strip-value { font-family: 'Instrument Serif', serif; font-size: 26px; letter-spacing: -0.5px; }
+    .strip-label { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+
+    /* Success banner */
+    .banner { border-radius: 12px; padding: 14px 18px; display: flex; align-items: center; gap: 12px; font-size: 13px; display: none; }
+    .banner.visible { display: flex; }
+    .banner.success { background: var(--success-bg); color: var(--success-text); }
+
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    .card { animation: fadeUp 0.4s ease both; }
+    .bento .card:nth-child(1) { animation-delay: 0.05s; }
+    .bento .card:nth-child(2) { animation-delay: 0.1s; }
+    .bento .card:nth-child(3) { animation-delay: 0.15s; }
+    .bento .card:nth-child(4) { animation-delay: 0.2s; }
+  </style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <span>Analytix</span>
+    <small>Sales Intelligence</small>
+  </div>
+  <nav class="nav-section">
+    <div class="nav-label">Overview</div>
+    <a href="/" class="nav-link">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      Dashboard
+    </a>
+    <a href="/charts" class="nav-link">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Analytics
+    </a>
+  </nav>
+  <nav class="nav-section">
+    <div class="nav-label">Manage</div>
+    <a href="/forms" class="nav-link active">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      Add Entry
+    </a>
+    <a href="/search" class="nav-link">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      Search
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-row">
+      <div class="user-avatar">A</div>
+      <div><div class="user-name">Admin</div><div class="user-role">Super user</div></div>
+    </div>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Add Entry</h1>
+      <p class="page-subtitle">Record a new sales transaction</p>
+    </div>
+    <span class="chip">Transaction Form</span>
+  </div>
+
+  <div class="bento">
+
+    <!-- Form (span 2) -->
+    <div class="card span-2">
+      <div class="card-label">Transaction Details</div>
+
+      <div id="successBanner" class="banner success" style="margin-bottom: 16px;">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        Entry submitted successfully!
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Customer Name</label>
+          <input type="text" class="form-input" id="name" placeholder="e.g. Sigit Dwi" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date</label>
+          <input type="date" class="form-input" id="tanggal" />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Purchase Amount (Rp)</label>
+          <input type="text" class="form-input" id="purchase" placeholder="e.g. 250000" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Payment Status</label>
+          <select class="form-input" id="selectedOption">
+            <option value="Success">Success</option>
+            <option value="Failed">Failed</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Note</label>
+        <textarea class="form-input" id="note" placeholder="Optional note about this transaction…"></textarea>
+      </div>
+
+      <div class="divider"></div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-primary" onclick="submitForm()">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          Submit Entry
+        </button>
+        <button class="btn btn-ghost" onclick="clearForm()">Clear</button>
+      </div>
+    </div>
+
+    <!-- Tips / Info -->
+    <div class="card">
+      <div class="card-label">Guidelines</div>
+      <div class="tip-item">
+        <div class="tip-icon">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <div>
+          <div class="tip-title">Customer Name</div>
+          <div class="tip-text">Use the customer's full name as it appears in the registry.</div>
+        </div>
+      </div>
+      <div class="tip-item">
+        <div class="tip-icon">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+        <div>
+          <div class="tip-title">Date</div>
+          <div class="tip-text">Enter the date when the transaction occurred, not today's date.</div>
+        </div>
+      </div>
+      <div class="tip-item">
+        <div class="tip-icon">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        </div>
+        <div>
+          <div class="tip-title">Amount</div>
+          <div class="tip-text">Enter the amount in Rupiah, numbers only. Do not add Rp prefix.</div>
+        </div>
+      </div>
+      <div class="tip-item">
+        <div class="tip-icon">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div>
+          <div class="tip-title">Status</div>
+          <div class="tip-text">Mark <em>Success</em> only after payment is confirmed by the bank.</div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <div style="font-size:11px; color:var(--text-muted); line-height:1.6;">
+        All entries are recorded immediately and appear in the dashboard. Contact support to modify a submitted entry.
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+  // Set today as default date
+  document.getElementById('tanggal').valueAsDate = new Date();
+
+  function submitForm() {
+    const name = document.getElementById('name').value.trim();
+    const tanggal = document.getElementById('tanggal').value;
+    const purchase = document.getElementById('purchase').value.trim();
+    const status = document.getElementById('selectedOption').value;
+    const note = document.getElementById('note').value.trim();
+
+    if (!name || !purchase) {
+      alert('Please fill in Customer Name and Amount.');
+      return;
+    }
+
+    fetch('/api/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: name,
+        tanggal: tanggal,
+        purchase: purchase,
+        selectedOption: status,
+        note: note
+      })
+    })
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('successBanner').classList.add('visible');
+      setTimeout(() => document.getElementById('successBanner').classList.remove('visible'), 3000);
+      clearForm();
+    })
+    .catch(err => alert('Error submitting form: ' + err));
+  }
+
+  function clearForm() {
+    document.getElementById('name').value = '';
+    document.getElementById('purchase').value = '';
+    document.getElementById('note').value = '';
+    document.getElementById('selectedOption').value = 'Success';
+    document.getElementById('tanggal').valueAsDate = new Date();
+  }
+</script>
+</body>
+</html>
