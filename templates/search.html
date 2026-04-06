@@ -290,8 +290,17 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ customer: id })
     })
-    .then(r => r.json())
-    .then(() => location.reload());
+    .then(async r => {
+      if (!r.ok) {
+        let text = await r.text();
+        throw new Error(text);
+      }
+      return r.json();
+    })
+    .then(() => {
+      window.location.href = '/search?_t=' + new Date().getTime(); // Force bypass cache
+    })
+    .catch(err => alert("Gagal menghapus: " + err));
   }
 
   function render() {
