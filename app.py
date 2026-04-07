@@ -1,25 +1,58 @@
 import os
-from flask import Flask, render_template, request, jsonify
+import sqlite3
+from flask import Flask, render_template, request, jsonify, g
 
 app = Flask(__name__)
 
 # ─── Database Configuration ─────────────────────────────────────────
-# Uses environment variables for production (Render + Aiven).
-# Falls back to localhost defaults for local development.
-app.config['MYSQL_HOST'] = os.environ.get('MYSQL_HOST', 'localhost')
-app.config['MYSQL_USER'] = os.environ.get('MYSQL_USER', 'root')
-app.config['MYSQL_PASSWORD'] = os.environ.get('MYSQL_PASSWORD', '')
-app.config['MYSQL_DB'] = os.environ.get('MYSQL_DB', 'datapenjualan')
-app.config['MYSQL_PORT'] = int(os.environ.get('MYSQL_PORT', '3306'))
+DATABASE = 'datapenjualan.db'
 
-# SSL required for Aiven cloud MySQL
-import MySQLdb
-ssl_mode = os.environ.get('MYSQL_SSL', '')
-if ssl_mode:
-    app.config['MYSQL_CUSTOM_OPTIONS'] = {"ssl": {"ca": ssl_mode}}
+def get_db():
+    db = getattr(g, '_database', None)
+    if db is None:
+        db = g._database = sqlite3.connect(DATABASE)
+    return db
 
-from flask_mysqldb import MySQL
-db = MySQL(app)
+@app.teardown_appcontext
+def close_connection(exception):
+    db = getattr(g, '_database', None)
+    if db is not None:
+        db.close()
+
+# Inisialisasi DB jika belum ada
+def init_db():
+    with app.app_context():
+        db = get_db()
+        cur = db.cursor()
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS penjualan (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                customer_name TEXT NOT NULL,
+                date TEXT NOT NULL,
+                purchase_amount REAL NOT NULL,
+                payment_status TEXT DEFAULT 'Success',
+                note TEXT
+            )
+        ''')
+        # Cek apakah tabel kosong, jika iya masukkan data awal
+        cur.execute("SELECT COUNT(*) FROM penjualan")
+        if cur.fetchone()[0] == 0:
+            dummy_data = [
+                ('Sigit Ramadhan', '2025-01-12', 2400000.00, 'Success', ''),
+                ('Dwi Santoso', '2025-01-14', 850000.00, 'Failed', 'Card declined'),
+                ('Andi Pratama', '2025-01-16', 3100000.00, 'Success', ''),
+                ('Rahma Hapsari', '2025-01-18', 560000.00, 'Success', ''),
+                ('Bagas Nugroho', '2025-01-19', 1750000.00, 'Failed', ''),
+                ('Citra Dewi', '2024-12-05', 2200000.00, 'Success', ''),
+                ('Fajar Kusuma', '2024-12-12', 1800000.00, 'Success', ''),
+                ('Nadia Putri', '2024-12-22', 1200000.00, 'Success', '')
+            ]
+            cur.executemany("INSERT INTO penjualan (customer_name, date, purchase_amount, payment_status, note) VALUES (?, ?, ?, ?, ?)", dummy_data)
+            db.commit()
+
+# Ensure db is initialized at startup
+with app.app_context():
+    init_db()
 
 
 # ─── Jinja Filter ────────────────────────────────────────────────────
@@ -35,22 +68,18 @@ app.jinja_env.filters['format_number'] = format_number
 # ─── Page Routes ─────────────────────────────────────────────────────
 @app.route('/')
 def index():
-    cur = db.connection.cursor()
+    cur = get_db().cursor()
 
-    # Count unique customers
     cur.execute("SELECT COUNT(DISTINCT customer_name) FROM penjualan")
     jumlahcust = cur.fetchone()[0]
 
-    # Total sales (excluding failed)
     cur.execute("SELECT COALESCE(SUM(purchase_amount), 0) FROM penjualan WHERE payment_status != 'failed'")
     total = cur.fetchone()[0]
     formatted_total = format_number(total)
 
-    # Recent 5 transactions
     cur.execute("SELECT id, customer_name, purchase_amount, payment_status, date FROM penjualan ORDER BY date DESC LIMIT 5")
     data = cur.fetchall()
-
-    cur.close()
+    
     return render_template('index.html', jumlahcust=jumlahcust, total=formatted_total, data=data)
 
 
@@ -61,30 +90,24 @@ def forms():
 
 @app.route('/charts')
 def charts():
-    cur = db.connection.cursor()
+    cur = get_db().cursor()
 
-    # Total customers
     cur.execute("SELECT COUNT(DISTINCT customer_name) FROM penjualan")
     jumlahcust = cur.fetchone()[0]
 
-    # Total sales (excluding failed)
     cur.execute("SELECT COALESCE(SUM(purchase_amount), 0) FROM penjualan WHERE payment_status != 'failed'")
     total = cur.fetchone()[0]
     formatted_total = format_number(total)
 
-    # Total transactions
     cur.execute("SELECT COUNT(*) FROM penjualan")
     jumlahtrx = cur.fetchone()[0]
 
-    # Success count
     cur.execute("SELECT COUNT(*) FROM penjualan WHERE payment_status != 'failed'")
     success_count = cur.fetchone()[0]
 
-    # Failed count
     cur.execute("SELECT COUNT(*) FROM penjualan WHERE payment_status = 'failed'")
     failed_count = cur.fetchone()[0]
 
-    cur.close()
     return render_template('charts.html',
                            jumlahcust=jumlahcust,
                            total=formatted_total,
@@ -95,43 +118,38 @@ def charts():
 
 @app.route('/search')
 def search():
-    """Search page — query parameter 'q' is optional.
-    If provided, filter by customer_name LIKE %q%.
-    If empty, return all records."""
     keyword = request.args.get('q', '').strip()
-    cur = db.connection.cursor()
+    cur = get_db().cursor()
 
     if keyword:
-        sql = "SELECT id, customer_name, purchase_amount, payment_status, date, note FROM penjualan WHERE customer_name LIKE %s ORDER BY date DESC"
+        sql = "SELECT id, customer_name, purchase_amount, payment_status, date, note FROM penjualan WHERE customer_name LIKE ? ORDER BY date DESC"
         cur.execute(sql, (f"%{keyword}%",))
     else:
         sql = "SELECT id, customer_name, purchase_amount, payment_status, date, note FROM penjualan ORDER BY date DESC"
         cur.execute(sql)
 
     results = cur.fetchall()
-    cur.close()
     return render_template('search.html', results=results)
 
 
 # ─── API Routes ──────────────────────────────────────────────────────
 @app.route('/api/submit', methods=['POST'])
 def submit_form():
-    """Insert a new transaction entry."""
     data = request.get_json()
-    cur = db.connection.cursor()
-    sql = "INSERT INTO penjualan (customer_name, date, purchase_amount, payment_status, note) VALUES (%s, %s, %s, %s, %s)"
+    db = get_db()
+    cur = db.cursor()
+    sql = "INSERT INTO penjualan (customer_name, date, purchase_amount, payment_status, note) VALUES (?, ?, ?, ?, ?)"
     values = (data['name'], data['tanggal'], data['purchase'], data['selectedOption'], data['note'])
     cur.execute(sql, values)
-    db.connection.commit()
-    cur.close()
+    db.commit()
     return jsonify({'message': 'Entry submitted successfully'})
 
 
 @app.route('/api/penjualan', methods=['GET'])
 def get_penjualan():
-    """Get daily sales totals (successful only), grouped by date."""
-    cur = db.connection.cursor()
-    query = """SELECT DATE_FORMAT(date, '%%d/%%m/%%Y') AS formatted_date,
+    cur = get_db().cursor()
+    # SQLite strftime for 'dd/mm/yyyy' -> %d/%m/%Y
+    query = """SELECT strftime('%d/%m/%Y', date) AS formatted_date,
                SUM(purchase_amount)
                FROM penjualan
                WHERE payment_status != 'failed'
@@ -139,27 +157,23 @@ def get_penjualan():
                ORDER BY date"""
     cur.execute(query)
     data = cur.fetchall()
-    cur.close()
     result = [{'nama': row[0], 'total_penjualan': float(row[1])} for row in data]
     return jsonify(result)
 
 
 @app.route('/api/failed', methods=['GET'])
 def get_failed():
-    """Get failed transaction totals, grouped by id."""
-    cur = db.connection.cursor()
+    cur = get_db().cursor()
     query = "SELECT id, SUM(purchase_amount) FROM penjualan WHERE payment_status = 'failed' GROUP BY id"
     cur.execute(query)
     data = cur.fetchall()
-    cur.close()
     result = [{'nama': row[0], 'total_penjualan': float(row[1])} for row in data]
     return jsonify(result)
 
 
 @app.route('/api/top_customers', methods=['GET'])
 def top_customers():
-    """Get top 6 customers by total purchase amount (successful only)."""
-    cur = db.connection.cursor()
+    cur = get_db().cursor()
     query = """SELECT customer_name, SUM(purchase_amount) AS total
                FROM penjualan
                WHERE payment_status != 'failed'
@@ -168,19 +182,20 @@ def top_customers():
                LIMIT 6"""
     cur.execute(query)
     data = cur.fetchall()
-    cur.close()
     result = [{'name': row[0], 'total': float(row[1])} for row in data]
     return jsonify(result)
 
 
 @app.route('/api/delete', methods=['POST'])
 def delete_data():
-    """Delete a transaction by ID."""
-    customer_id = request.json.get('customer')
-    cur = db.connection.cursor()
-    cur.execute("DELETE FROM penjualan WHERE id = %s", (customer_id,))
-    db.connection.commit()
-    cur.close()
+    data = request.get_json(silent=True) or {}
+    customer_id = data.get('customer')
+    if customer_id is None:
+        return jsonify({'error': 'No customer ID provided'}), 400
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("DELETE FROM penjualan WHERE id = ?", (customer_id,))
+    db.commit()
     return jsonify({'message': 'Data deleted successfully'})
 
 
